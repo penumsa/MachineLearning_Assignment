@@ -1,0 +1,159 @@
+
+Prediction Assignment Writeup
+Sastry Penumarthy
+Sunday, January 25, 2015
+
+DOCUMENT AND DATA SOURCE - Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers’ Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6. Cited by 2 (Google Scholar)
+Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3PsMvtesA
+
+Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+****Load the training and test data sets
+
+library(corrplot)
+library(caret)
+
+## Loading required package: lattice
+## Loading required package: ggplot2
+
+setwd("C:\\Penumarthy\\SastryFolder\\Coursera\\Data Science\\Machine Learning")
+
+pml_training <- read.csv("pml-training.csv", header=TRUE, na.strings = c("NA", ""))
+dim(pml_training)
+
+## [1] 19622   160
+
+pml_testing <- read.csv("pml-testing.csv", header=TRUE, na.strings = c("NA", ""))
+dim(pml_testing)
+
+## [1]  20 160
+
+Paring down the data by removing Columns with missing values - this is a pre-processing step to prepare the data for further processing. This is done by eliminating columns that have null values and also columns that are “time_stamp, user_name and new_window”
+
+pml_train_less_cols <- pml_training[, (colSums(is.na(pml_training)) == 0)]
+pml_testing <- pml_testing[, (colSums(is.na(pml_training)) == 0)]
+
+removed_cols <- grepl("X|user_name|timestamp|new_window", colnames(pml_train_less_cols))
+pml_train_less_cols <- pml_train_less_cols[, !removed_cols]
+pml_testing_final <- pml_testing[, !removed_cols]
+colnames(pml_train_less_cols)
+
+##  [1] "num_window"           "roll_belt"            "pitch_belt"          
+##  [4] "yaw_belt"             "total_accel_belt"     "gyros_belt_x"        
+##  [7] "gyros_belt_y"         "gyros_belt_z"         "accel_belt_x"        
+## [10] "accel_belt_y"         "accel_belt_z"         "magnet_belt_x"       
+## [13] "magnet_belt_y"        "magnet_belt_z"        "roll_arm"            
+## [16] "pitch_arm"            "yaw_arm"              "total_accel_arm"     
+## [19] "gyros_arm_x"          "gyros_arm_y"          "gyros_arm_z"         
+## [22] "accel_arm_x"          "accel_arm_y"          "accel_arm_z"         
+## [25] "magnet_arm_x"         "magnet_arm_y"         "magnet_arm_z"        
+## [28] "roll_dumbbell"        "pitch_dumbbell"       "yaw_dumbbell"        
+## [31] "total_accel_dumbbell" "gyros_dumbbell_x"     "gyros_dumbbell_y"    
+## [34] "gyros_dumbbell_z"     "accel_dumbbell_x"     "accel_dumbbell_y"    
+## [37] "accel_dumbbell_z"     "magnet_dumbbell_x"    "magnet_dumbbell_y"   
+## [40] "magnet_dumbbell_z"    "roll_forearm"         "pitch_forearm"       
+## [43] "yaw_forearm"          "total_accel_forearm"  "gyros_forearm_x"     
+## [46] "gyros_forearm_y"      "gyros_forearm_z"      "accel_forearm_x"     
+## [49] "accel_forearm_y"      "accel_forearm_z"      "magnet_forearm_x"    
+## [52] "magnet_forearm_y"     "magnet_forearm_z"     "classe"
+
+The following process steps are done on the data - a. Split the training set into 2 - 70% into Training, and 30% of the data into Testing b. Fitting a model
+
+inTrain <- createDataPartition(y = pml_train_less_cols$classe, p = 0.7, list = FALSE)
+train_data <- pml_train_less_cols[inTrain, ]
+dim(train_data)
+
+## [1] 13737    54
+
+test_data <- pml_train_less_cols[-inTrain, ]
+colnames(test_data)
+
+##  [1] "num_window"           "roll_belt"            "pitch_belt"          
+##  [4] "yaw_belt"             "total_accel_belt"     "gyros_belt_x"        
+##  [7] "gyros_belt_y"         "gyros_belt_z"         "accel_belt_x"        
+## [10] "accel_belt_y"         "accel_belt_z"         "magnet_belt_x"       
+## [13] "magnet_belt_y"        "magnet_belt_z"        "roll_arm"            
+## [16] "pitch_arm"            "yaw_arm"              "total_accel_arm"     
+## [19] "gyros_arm_x"          "gyros_arm_y"          "gyros_arm_z"         
+## [22] "accel_arm_x"          "accel_arm_y"          "accel_arm_z"         
+## [25] "magnet_arm_x"         "magnet_arm_y"         "magnet_arm_z"        
+## [28] "roll_dumbbell"        "pitch_dumbbell"       "yaw_dumbbell"        
+## [31] "total_accel_dumbbell" "gyros_dumbbell_x"     "gyros_dumbbell_y"    
+## [34] "gyros_dumbbell_z"     "accel_dumbbell_x"     "accel_dumbbell_y"    
+## [37] "accel_dumbbell_z"     "magnet_dumbbell_x"    "magnet_dumbbell_y"   
+## [40] "magnet_dumbbell_z"    "roll_forearm"         "pitch_forearm"       
+## [43] "yaw_forearm"          "total_accel_forearm"  "gyros_forearm_x"     
+## [46] "gyros_forearm_y"      "gyros_forearm_z"      "accel_forearm_x"     
+## [49] "accel_forearm_y"      "accel_forearm_z"      "magnet_forearm_x"    
+## [52] "magnet_forearm_y"     "magnet_forearm_z"     "classe"
+
+The data set is now 54 columns wide. Next, the algorithm looks at the correlations of the variables and taking a weighted context of the predictors of “classe” to preserve the most information
+
+Correl <- cor(train_data[, -54])
+corrplot(Correl, order = "FPC", method = "color", type = "lower", tl.cex = 0.8, 
+    tl.col = rgb(0, 0, 0))
+
+Fitting a “PCA” model and identifying the key predictors
+
+preProc <- preProcess(train_data[, -54], method = "pca", thresh = 0.99)
+trainPC <- predict(preProc, train_data[, -54])
+valid_testPC <- predict(preProc, test_data[, -54])
+
+modelFit <- train(train_data$classe ~ ., method = "rf", data = trainPC, trControl = trainControl(method = "cv", number = 4), importance = TRUE)
+
+## Loading required package: randomForest
+## randomForest 4.6-10
+## Type rfNews() to see new features/changes/bug fixes.
+
+varImpPlot(modelFit$finalModel, sort = TRUE, type = 1, pch = 19, col = 1, cex = 1, 
+    main = "Importance of the Individual Principal Components")
+
+Cross-Validation
+
+predictValid <- predict(modelFit, valid_testPC)
+conMatrix <- confusionMatrix(test_data$classe, predictValid)
+conMatrix$table
+
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1672    0    1    1    0
+##          B   21 1111    3    2    2
+##          C    1   13 1006    6    0
+##          D    1    1   38  923    1
+##          E    0    1    9   11 1061
+
+Determining the model Accuracy and the out-of-sample error values
+
+accuracy <- postResample(test_data$classe, predictValid)
+model_accuracy <- accuracy[[1]]
+model_accuracy
+
+## [1] 0.9809686
+
+out_of_sample_error <- 1 - model_accuracy
+out_of_sample_error
+
+## [1] 0.01903144
+
+Predicting using the test data set
+
+testPred <- predict(preProc, pml_testing_final[, -54])
+Predictions <- predict(modelFit, testPred)
+Predictions
+
+##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E
+
