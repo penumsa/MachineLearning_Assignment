@@ -31,6 +31,7 @@ The data for this project come from this source: http://groupware.les.inf.puc-ri
 ```{r, echo=TRUE}
 library(corrplot)
 library(caret)
+library(randomForest)
 setwd("C:\\Penumarthy\\SastryFolder\\Coursera\\Data Science\\Machine Learning")
 
 pml_training <- read.csv("pml-training.csv", header=TRUE, na.strings = c("NA", ""))
@@ -101,5 +102,5 @@ Predicting using the test data set
 ```{r, echo=TRUE}
 testPred <- predict(preProc, pml_testing_final[, -54])
 Predictions <- predict(modelFit, testPred)
-predictions
+Predictions
 ```
